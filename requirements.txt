@@ -2,3 +2,5 @@ reporoulette
 huggingface_hub
 pandas
 python-dotenv
+selenium 
+beautifulsoup4

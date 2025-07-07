@@ -20,17 +20,32 @@ def get_models(num_models=5):
 def get_org_members(org):
     members = api.list_organization_members(org)
     member_data=list()
-    print(next(members))
+    print(next(members).num_likes)
     for i in members:
         member_data.append(i.__dict__)
     return member_data
 #t=get_org_members("THUDM")
 #pp.pprint(t)
 
+############ Does NOT have the links to github, what is num_discussions??#####
+def get_user_info(user):
+    pp.pprint(api.get_user_overview(user))
+
+#get_user_info("Stanislas")
+
 import requests
-url='https://huggingface.co/api/whoami-v2'
-headers= {"authorization": f"Bearer {os.getenv("HF_TOKEN")}"}
-r = requests.get(url, headers=headers)
-pp.pprint(r.json())
-############ accurate way to get followers##############
-#print(list(api.list_user_following("akhaliq")))
+
+def get_user_gh(user):
+    from bs4 import BeautifulSoup
+    source=requests.get(f"https://huggingface.co/{user}")
+    sourcehtml=source.text
+    soup = BeautifulSoup(sourcehtml, "html.parser")
+    step1= soup.find(class_="SVELTE_HYDRATER", attrs={"data-target":"UserProfile"})
+    step2=dict(step1.attrs)
+    import json
+    finaldict=json.loads(step2['data-props'])
+    print(finaldict.keys())
+    pp.pprint(finaldict)
+
+get_user_gh("danielhanchen")
+
