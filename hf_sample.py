@@ -1,13 +1,14 @@
 from huggingface_hub import HfApi
-from itertools import islice
 import pprint as pp
 import os
+import json
+import datetime
+from datetime import datetime
 from dotenv import load_dotenv
 
-load_dotenv()
-#api=HfApi(token=os.getenv("HF_TOKEN"))
 api=HfApi()
-#m=list(iter(models))
+#this no longer works, keeping to revamp later
+'''
 def get_models(num_models=5):
     models=api.list_models()
     return_data=list(islice(models,num_models))
@@ -15,16 +16,34 @@ def get_models(num_models=5):
     for i in return_data:
         model_data.append(i.__dict__)
     return model_data
-
-def get_all_models(num_models=5):
+'''
+def get_all_models():
     models=api.list_models(sort="created_at",direction=1,full=True,cardData=False,fetch_config=False)
-    return_data=list(islice(models,num_models))
-    model_data=list()
-    for i in return_data:
-        if(i["created_at"]=="datetime.datetime(2022, 3, 2, 23, 29, 4, tzinfo=datetime.timezone.utc)"):
-            i["created_at"]=api.list_repo_commits(i["id"])[-1]
-        model_data.append(i.__dict__)
-    return model_data
+    model_data=dict()
+    for dummy in models: 
+        model=next(models).__dict__
+        #this is a way to get accurate creation dates, since huggingface didn't always track it themselves.
+        if(str(model["created_at"])=="2022-03-02 23:29:04+00:00"):
+            #might not be perfectly accurate but close enough
+            real_created_at=api.list_repo_commits(model["id"])[-1].__dict__
+            model["created_at"]=real_created_at["created_at"]
+        
+        model_data[model["id"]]=model
+    #for recordkeeping and minimizing redundant future scrapes
+    current_time=datetime.now().strftime("%y-%m-%d")
+    dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files",f"model_metadata_{current_time}.json"))
+    try:
+        with open(dump_path,"w") as f:
+            json.dump(model_data,f,indent=4,default=str)
+    except Exception as e:
+        print(f"Error: {e}")
+    else:
+        print(f"Successful write to {dump_path}")
+        
+
+
+
+
 
 def get_org_members(org):
     members = api.list_organization_members(org)
@@ -57,7 +76,5 @@ def get_user_gh(user):
 
 
 
-if(__name__=="__main__"):
-    r=get_all_models(5)
-    pp.pprint(r[4])
-    #pp.pprint(api.list_repo_commits("google-bert/bert-base-uncased")[-1])
+#if(__name__=="__main__"):
+#    get_all_models()
