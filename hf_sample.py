@@ -6,6 +6,7 @@ import datetime
 from datetime import datetime
 from dotenv import load_dotenv
 
+
 api=HfApi()
 #this no longer works, keeping to revamp later
 '''
@@ -20,14 +21,15 @@ def get_models(num_models=5):
 def get_all_models():
     models=api.list_models(sort="created_at",direction=1,full=True,cardData=False,fetch_config=False)
     model_data=dict()
-    for dummy in models: 
-        model=next(models).__dict__
+    i=0
+    for m in models: 
+        model=m.__dict__
         #this is a way to get accurate creation dates, since huggingface didn't always track it themselves.
-        if(str(model["created_at"])=="2022-03-02 23:29:04+00:00"):
+        #but also the API hates it currently
+        #if(str(model["created_at"])=="2022-03-02 23:29:04+00:00"):
             #might not be perfectly accurate but close enough
-            real_created_at=api.list_repo_commits(model["id"])[-1].__dict__
-            model["created_at"]=real_created_at["created_at"]
-        
+        #    real_created_at=api.list_repo_commits(model["id"])[-1].__dict__
+        #    model["created_at"]=real_created_at["created_at"]
         model_data[model["id"]]=model
     #for recordkeeping and minimizing redundant future scrapes
     current_time=datetime.now().strftime("%y-%m-%d")
@@ -40,7 +42,6 @@ def get_all_models():
     else:
         print(f"Successful write to {dump_path}")
         
-
 
 
 
@@ -75,6 +76,5 @@ def get_user_gh(user):
 
 
 
-
-#if(__name__=="__main__"):
-#    get_all_models()
+if(__name__=="__main__"):
+    get_all_models()
