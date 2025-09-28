@@ -1,12 +1,15 @@
 from huggingface_hub import HfApi
 import pprint as pp
 import os
-import json
+import argparse
 import datetime
 import csv
+import time
 from datetime import datetime
 from dotenv import load_dotenv
 
+parser=argparse.ArgumentParser()
+parser.add_argument("-t", "--timestamp", help="Unix timestamp that the scraper will stop at. First model created at 1646263744")
 
 api=HfApi()
 #this no longer works, keeping to revamp later
@@ -20,30 +23,39 @@ def get_models(num_models=5):
     return model_data
 '''
 def get_models_since(start:int):
+    #first model upload timestamp: 1646263744
     models=api.list_models(sort="created_at",direction=-1,full=True,cardData=False,fetch_config=False)
     model_data=list()
     i=0
     for m in models: 
-        model=m.__dict__
-        print(int(model['created_at'].timestamp()), start, bool(int(model['created_at'].timestamp())<start))
-        if(int(model['created_at'].timestamp())<start):
-            break
-        model.pop("siblings")
-        #this is a way to get accurate creation dates, since huggingface didn't always track it themselves.
-        #but also the API hates it currently
-        #if(str(model["created_at"])=="2022-03-02 23:29:04+00:00"):
-            #might not be perfectly accurate but close enough
-        #    real_created_at=api.list_repo_commits(model["id"])[-1].__dict__
-        #    model["created_at"]=real_created_at["created_at"]
+        try:
+            model=m.__dict__
+            if(int(model['created_at'].timestamp())<start):
+                break
+            model.pop("siblings")
+            model.pop("cardData")
+            #this is a way to get accurate creation dates, since huggingface didn't always track it themselves.
+            #but also the API hates it currently
+            #if(str(model["created_at"])=="2022-03-02 23:29:04+00:00"):
+                #might not be perfectly accurate but close enough
+            #    real_created_at=api.list_repo_commits(model["id"])[-1].__dict__
+            #    model["created_at"]=real_created_at["created_at"]
 
-        model_data.append(model)
+            model_data.append(model)
+            #time.sleep(1)
+        except Exception as e:
+            print(f"Error: {e}")
     
     #for recordkeeping and minimizing redundant future scrapes
     current_time=int(datetime.now().timestamp())
-    dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files",f"model_metadata_{current_time}.json"))
+    dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files",f"model_metadata_{current_time}.csv"))
     try:
-        with open(dump_path,"w") as f:
-            json.dump(model_data,f,indent=4,default=str)
+        with open(dump_path,"w",newline='',encoding='utf-8') as f:
+            headers=model_data[0].keys()
+            print(headers)
+            writer=csv.DictWriter(f,fieldnames=headers)
+            writer.writeheader()
+            writer.writerows(model_data)
     except Exception as e:
         print(f"Error: {e}")
     else:
@@ -84,4 +96,5 @@ def get_user_gh(user):
 
 
 if(__name__=="__main__"):
-    get_models_since(1758231485)
+    args=parser.parse_args()
+    get_models_since(int(args.timestamp))
