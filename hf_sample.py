@@ -3,6 +3,7 @@ import pprint as pp
 import os
 import json
 import datetime
+import csv
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -18,21 +19,27 @@ def get_models(num_models=5):
         model_data.append(i.__dict__)
     return model_data
 '''
-def get_all_models():
-    models=api.list_models(sort="created_at",direction=1,full=True,cardData=False,fetch_config=False)
-    model_data=dict()
+def get_models_since(start:int):
+    models=api.list_models(sort="created_at",direction=-1,full=True,cardData=False,fetch_config=False)
+    model_data=list()
     i=0
     for m in models: 
         model=m.__dict__
+        print(int(model['created_at'].timestamp()), start, bool(int(model['created_at'].timestamp())<start))
+        if(int(model['created_at'].timestamp())<start):
+            break
+        model.pop("siblings")
         #this is a way to get accurate creation dates, since huggingface didn't always track it themselves.
         #but also the API hates it currently
         #if(str(model["created_at"])=="2022-03-02 23:29:04+00:00"):
             #might not be perfectly accurate but close enough
         #    real_created_at=api.list_repo_commits(model["id"])[-1].__dict__
         #    model["created_at"]=real_created_at["created_at"]
-        model_data[model["id"]]=model
+
+        model_data.append(model)
+    
     #for recordkeeping and minimizing redundant future scrapes
-    current_time=datetime.now().strftime("%y-%m-%d")
+    current_time=int(datetime.now().timestamp())
     dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files",f"model_metadata_{current_time}.json"))
     try:
         with open(dump_path,"w") as f:
@@ -77,4 +84,4 @@ def get_user_gh(user):
 
 
 if(__name__=="__main__"):
-    get_all_models()
+    get_models_since(1758231485)
