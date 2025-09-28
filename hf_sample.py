@@ -1,21 +1,50 @@
 from huggingface_hub import HfApi
-from itertools import islice
 import pprint as pp
 import os
+import json
+import datetime
+from datetime import datetime
 from dotenv import load_dotenv
 
-load_dotenv()
-api=HfApi(token=os.getenv("HF_TOKEN"))
-models=api.list_models()
-#m=list(iter(models))
+
+api=HfApi()
+#this no longer works, keeping to revamp later
+'''
 def get_models(num_models=5):
+    models=api.list_models()
     return_data=list(islice(models,num_models))
     model_data=list()
     for i in return_data:
         model_data.append(i.__dict__)
     return model_data
-#m=get_models()
-#pp.pprint(m)
+'''
+def get_all_models():
+    models=api.list_models(sort="created_at",direction=1,full=True,cardData=False,fetch_config=False)
+    model_data=dict()
+    i=0
+    for m in models: 
+        model=m.__dict__
+        #this is a way to get accurate creation dates, since huggingface didn't always track it themselves.
+        #but also the API hates it currently
+        #if(str(model["created_at"])=="2022-03-02 23:29:04+00:00"):
+            #might not be perfectly accurate but close enough
+        #    real_created_at=api.list_repo_commits(model["id"])[-1].__dict__
+        #    model["created_at"]=real_created_at["created_at"]
+        model_data[model["id"]]=model
+    #for recordkeeping and minimizing redundant future scrapes
+    current_time=datetime.now().strftime("%y-%m-%d")
+    dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files",f"model_metadata_{current_time}.json"))
+    try:
+        with open(dump_path,"w") as f:
+            json.dump(model_data,f,indent=4,default=str)
+    except Exception as e:
+        print(f"Error: {e}")
+    else:
+        print(f"Successful write to {dump_path}")
+        
+
+
+
 
 def get_org_members(org):
     members = api.list_organization_members(org)
@@ -24,14 +53,12 @@ def get_org_members(org):
     for i in members:
         member_data.append(i.__dict__)
     return member_data
-#t=get_org_members("THUDM")
-#pp.pprint(t)
+
 
 ############ Does NOT have the links to github, what is num_discussions??#####
 def get_user_info(user):
     pp.pprint(api.get_user_overview(user))
 
-#get_user_info("Stanislas")
 
 import requests
 
@@ -47,5 +74,7 @@ def get_user_gh(user):
     print(finaldict.keys())
     pp.pprint(finaldict)
 
-get_user_gh("danielhanchen")
 
+
+if(__name__=="__main__"):
+    get_all_models()

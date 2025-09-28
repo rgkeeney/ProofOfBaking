@@ -25,4 +25,15 @@ def get_user_info(user):
     r=requests.get(url, headers=headers)
     pp.pprint(r.json())
 
+def get_issues(repo_owner, repo_name):
+    url=f"https://api.github.com/repos/{repo_owner}/{repo_name}/issues"
+    headers={"Authorization": f"Bearer {gh_token}"}
+    params={"per_page": 30,
+            "page":20}
+    r=requests.get(url, params=params)
+    return r.json()
 
+if(__name__=="__main__"):
+    payload=get_issues("yt-dlp","yt-dlp")
+    print(len(payload))
+    pp.pprint(payload[0])
