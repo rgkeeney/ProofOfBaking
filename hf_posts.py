@@ -4,11 +4,16 @@ import os
 import csv
 import argparse
 import datetime
+import json
 from datetime import datetime
 from huggingface_hub.utils import HfHubHTTPError
 from huggingface_hub import DiscussionComment
+import time
+
 
 api=HfApi()
+
+
 
 def get_repo_posts(repo_name):
     postnum=1
@@ -59,45 +64,59 @@ def get_repo_posts(repo_name):
         
         except HfHubHTTPError as e:
             if(e.response.status_code==404):
-                #print(f"found end at comment #{postnum-1}")
+                if(postnum==1):
+                    postlist.append({"repo_id":repo_name,"discussion_id":0,"status":"empty"})
+                    #print("no comments")
+                #else:
+                   #print(f"found end at comment #{postnum-1}")
                 break
             if(e.response.status_code==410):
-                postlist.append({"discussion_id":postnum,"status":"deleted"})
+                postlist.append({"repo_id":repo_name,"discussion_id":postnum,"status":"deleted"})
                 postnum+=1
+            if(e.response.status_code==401):
+                postlist.append({"repo_id":repo_name,"discussion_id":-1, "status": "private repository"})
+                break
+            if(e.response.status_code==429):
+                print(e)
+
             else:
-                print(f"unexpected error: {e}")
+                print("unexpected error: ", e.response)
                 break
     return postlist
-   
+
 
 def main():
-    #parser=argparse.ArgumentParser()
-    #parser.add_argument("path", help="path to file holding repos")
-    #args=parser.parse_args()
-    model_name="zai-org/GLM-4.5"
-    #with open(args.path, "r") as m:
-    #    file=m.read()
-    #    ids=json.loads(file).keys()
-    repo_discussions=list()
-    repo_discussions=get_repo_posts(model_name)
-    current_time=datetime.now().timestamp()
+    current_time=int(datetime.now().timestamp())
     dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_{current_time}.csv"))
-    '''
-    for comment in repo_discussions:
-        if(comment['status'] !='deleted'):
-            #print(comment['type'])
-            print(comment.keys())
-    '''
+
+    #headers=repo_discussions[0].keys()
+    model_path=os.path.abspath(os.path.join(os.getcwd(),"hf_files",args.file))
+    with open(model_path, 'r')as f:
+        data=dict(json.load(f))
+        model_names=list(data.keys())
+    all_discussions=list()
+
+    for model in model_names[0:5]:
+        print(model)
+        discussions=get_repo_posts(model)
+        all_discussions.extend(discussions)
+
+
     try:
-         with open(dump_path,"w",newline='',encoding='utf-8') as f:
-            headers=repo_discussions[0].keys()
+         with open(dump_path,"a",newline='',encoding='utf-8') as f:
+            headers=all_discussions[0].keys()
             writer=csv.DictWriter(f,fieldnames=headers)
             writer.writeheader()
-            writer.writerows(repo_discussions)
+            writer.writerows(all_discussions)
     except Exception as e:
         print(f"Error: {e}")
     else:
         print(f"Successful write to {dump_path}")
 
+
+
 if(__name__=="__main__"):
+    parser=argparse.ArgumentParser()
+    parser.add_argument("-f", "--file", type=str,help="name of model file in hf_files")
+    args=parser.parse_args()
     main()
