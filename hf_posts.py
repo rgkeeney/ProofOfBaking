@@ -12,15 +12,24 @@ import time
 
 
 api=HfApi()
-
-
+global ratelimitcounter
+ratelimitcounter=500
 
 def get_repo_posts(repo_name):
+    
+    global ratelimitcounter
+    if(ratelimitcounter<=4):
+        print("sleeping for ratelimit")
+        time.sleep((time.time()+301)-batchstart)
+        batchstart=time.time()
+        ratelimitcounter=500
     postnum=1
     postlist=list()
+    print(repo_name)
     while True:
         try:
             fulldiscussion=api.get_discussion_details(repo_name,postnum)
+            ratelimitcounter-=1
             infodict=dict()
             infodict['repo_id']=fulldiscussion.repo_id
             infodict['title']=fulldiscussion.title
@@ -29,14 +38,12 @@ def get_repo_posts(repo_name):
             infodict['is_pull_request']=fulldiscussion.is_pull_request
             infodict['og_author']=fulldiscussion.author
             infodict['url']=fulldiscussion.url
-
             #shared info ends here
             #author, comment_id, create time, rawtext, language
             commentnum=1
             for event in fulldiscussion.events:
                 if(type(event) is DiscussionComment):
                     commentdict=event.__dict__
-                    #print(commentdict.keys())
                     commentdict['comment_id']=commentnum
                     #the amount of nested dicts is evil
                     commentdict.update(commentdict['_event'])
@@ -59,10 +66,13 @@ def get_repo_posts(repo_name):
                     postlist.append(commentdict)
                     commentnum+=1
 
+                ratelimitcounter-=1
+
                     
             postnum+=1
         
         except HfHubHTTPError as e:
+            ratelimitcounter-=1
             if(e.response.status_code==404):
                 if(postnum==1):
                     postlist.append({"repo_id":repo_name,"discussion_id":0,"status":"empty"})
@@ -77,8 +87,9 @@ def get_repo_posts(repo_name):
                 postlist.append({"repo_id":repo_name,"discussion_id":-1, "status": "private repository"})
                 break
             if(e.response.status_code==429):
+                print("ratelimited, sleeping")
                 print(e)
-
+                time.sleep(20)
             else:
                 print("unexpected error: ", e.response)
                 break
@@ -86,21 +97,25 @@ def get_repo_posts(repo_name):
 
 
 def main():
+    global ratelimitcounter
     current_time=int(datetime.now().timestamp())
     dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_{current_time}.csv"))
-
+    batchstart=time.time()
     #headers=repo_discussions[0].keys()
     model_path=os.path.abspath(os.path.join(os.getcwd(),"hf_files",args.file))
     with open(model_path, 'r')as f:
         data=dict(json.load(f))
         model_names=list(data.keys())
     all_discussions=list()
+    def name_gen():
+        for i in range(0, len(model_names),500):
+            yield model_names[i:i+500]
 
-    for model in model_names[0:5]:
-        print(model)
-        discussions=get_repo_posts(model)
-        all_discussions.extend(discussions)
-
+    for chunk in name_gen():
+        for model in chunk:
+            discussions=get_repo_posts(model)
+            all_discussions.extend(discussions)
+            #sleep just long enough to not hit rate limit
 
     try:
          with open(dump_path,"a",newline='',encoding='utf-8') as f:
@@ -112,7 +127,6 @@ def main():
         print(f"Error: {e}")
     else:
         print(f"Successful write to {dump_path}")
-
 
 
 if(__name__=="__main__"):
