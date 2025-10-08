@@ -17,12 +17,12 @@ ratelimitcounter=500
 
 def get_repo_posts(repo_name):
     
-    global ratelimitcounter
-    if(ratelimitcounter<=4):
+    #global ratelimitcounter
+    """if(ratelimitcounter<=4):
         print("sleeping for ratelimit")
         time.sleep((time.time()+301)-batchstart)
         batchstart=time.time()
-        ratelimitcounter=500
+        ratelimitcounter=500"""
     postnum=1
     postlist=list()
     print(repo_name)
@@ -87,9 +87,8 @@ def get_repo_posts(repo_name):
                 postlist.append({"repo_id":repo_name,"discussion_id":-1, "status": "private repository"})
                 break
             if(e.response.status_code==429):
-                print("ratelimited, sleeping")
-                print(e)
-                time.sleep(20)
+                print(f"ratelimited at model {repo_name}")
+
             else:
                 print("unexpected error: ", e.response)
                 break
@@ -108,14 +107,16 @@ def main():
         model_names=list(data.keys())
     all_discussions=list()
     def name_gen():
-        for i in range(0, len(model_names),500):
-            yield model_names[i:i+500]
+        for i in range(0, len(model_names),490):
+            yield model_names[i:i+490]
 
     for chunk in name_gen():
         for model in chunk:
             discussions=get_repo_posts(model)
             all_discussions.extend(discussions)
             #sleep just long enough to not hit rate limit
+        print("sleeping for rate limit")
+        time.sleep(300)
 
     try:
          with open(dump_path,"a",newline='',encoding='utf-8') as f:
