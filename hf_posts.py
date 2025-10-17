@@ -97,7 +97,6 @@ def get_repo_posts(repo_name):
 
 
 def main():
-    batchstart=time.time()
     current_time=int(datetime.now().timestamp())
     dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_{current_time}.csv"))
     #headers=repo_discussions[0].keys()
