@@ -88,11 +88,7 @@ def get_repo_posts(repo_name):
                 postlist.append({"repo_id":repo_name,"discussion_id":-1, "status": "private repository"})
                 break
             if(e.response.status_code==429):
-                print("hit ratelimit, ")
-                print(e)
-                time.sleep(20)
-
-            #################TODO Handle 403#######################
+                print(f"ratelimited at model {repo_name}")
 
             else:
                 print("unexpected error: ", e.response)
@@ -111,8 +107,8 @@ def main():
         model_names=list(data.keys())
     all_discussions=list()
     def name_gen():
-        for i in range(0, len(model_names),500):
-            yield model_names[i:i+500]
+        for i in range(0, len(model_names),490):
+            yield model_names[i:i+490]
 
     for chunk in tqdm(name_gen(),position=0, total=len(model_names)):
         for model in tqdm(chunk, position=1, leave=False):
