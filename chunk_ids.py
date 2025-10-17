@@ -25,7 +25,19 @@ def csv_chunk():
 
 
 def json_chunk():
-    dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","model_id_subsets"))
+    model_path=os.path.abspath(os.path.join(os.getcwd(),args.file))
+    with open(model_path, 'r')as f:
+        data=dict(json.load(f))
+        model_ids=list(data.keys())
+    for i in range(0, len(model_ids), args.size):
+        model_subset=model_ids[i:i+args.size]
+        dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","model_id_subsets",f"ids_{i}-{i+len(model_subset)}.txt"))
+        with open(dump_path, 'a') as f:
+            for id in model_subset:
+                f.write(f"{id}\n")
+    print(f"{math.ceil(len(model_ids)/args.size)} new files cointaining {len(model_ids)} ids")
+
+
 
 def main():
     current_time=int(datetime.now().timestamp())
