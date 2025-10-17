@@ -5,6 +5,7 @@ import csv
 import argparse
 import datetime
 import json
+from tqdm import tqdm
 from datetime import datetime
 from huggingface_hub.utils import HfHubHTTPError
 from huggingface_hub import DiscussionComment
@@ -15,17 +16,17 @@ api=HfApi()
 global ratelimitcounter
 ratelimitcounter=500
 
+
 def get_repo_posts(repo_name):
-    
+
     global ratelimitcounter
     if(ratelimitcounter<=4):
-        print("sleeping for ratelimit")
-        time.sleep((time.time()+301)-batchstart)
-        batchstart=time.time()
+        tqdm.write("\n ---------sleeping for ratelimit-------------- \n")
+        for i in tqdm(range(300)):
+            time.sleep(1)
         ratelimitcounter=500
     postnum=1
     postlist=list()
-    print(repo_name)
     while True:
         try:
             fulldiscussion=api.get_discussion_details(repo_name,postnum)
@@ -87,9 +88,12 @@ def get_repo_posts(repo_name):
                 postlist.append({"repo_id":repo_name,"discussion_id":-1, "status": "private repository"})
                 break
             if(e.response.status_code==429):
-                print("ratelimited, sleeping")
+                print("hit ratelimit, ")
                 print(e)
                 time.sleep(20)
+
+            #################TODO Handle 403#######################
+
             else:
                 print("unexpected error: ", e.response)
                 break
@@ -97,10 +101,9 @@ def get_repo_posts(repo_name):
 
 
 def main():
-    global ratelimitcounter
+    batchstart=time.time()
     current_time=int(datetime.now().timestamp())
     dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_{current_time}.csv"))
-    batchstart=time.time()
     #headers=repo_discussions[0].keys()
     model_path=os.path.abspath(os.path.join(os.getcwd(),"hf_files",args.file))
     with open(model_path, 'r')as f:
@@ -111,11 +114,14 @@ def main():
         for i in range(0, len(model_names),500):
             yield model_names[i:i+500]
 
-    for chunk in name_gen():
-        for model in chunk:
+    for chunk in tqdm(name_gen(),position=0, total=len(model_names)):
+        for model in tqdm(chunk, position=1, leave=False):
             discussions=get_repo_posts(model)
             all_discussions.extend(discussions)
-            #sleep just long enough to not hit rate limit
+
+
+
+
 
     try:
          with open(dump_path,"a",newline='',encoding='utf-8') as f:
@@ -132,5 +138,6 @@ def main():
 if(__name__=="__main__"):
     parser=argparse.ArgumentParser()
     parser.add_argument("-f", "--file", type=str,help="name of model file in hf_files")
+    parser.add_argument("-r", "--ratelimit", type=int, default=500, help="huggingface api rate limit per 5 minutes, defaults to 500")
     args=parser.parse_args()
     main()
