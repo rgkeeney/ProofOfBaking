@@ -5,26 +5,28 @@ import csv
 import argparse
 import datetime
 import json
+import re
+import sys
 from tqdm import tqdm
 from datetime import datetime
 from huggingface_hub.utils import HfHubHTTPError
 from huggingface_hub import DiscussionComment
+from dotenv import load_dotenv
 import time
 
-
-api=HfApi()
+load_dotenv()
+api=HfApi(token=os.getenv("HF_TOKEN"))
 global ratelimitcounter
-ratelimitcounter=500
-
 
 def get_repo_posts(repo_name):
 
     global ratelimitcounter
-    if(ratelimitcounter<=4):
-        tqdm.write("\n ---------sleeping for ratelimit-------------- \n")
-        for i in tqdm(range(300)):
-            time.sleep(1)
-        ratelimitcounter=500
+    if(ratelimitcounter<=5):
+        #tqdm.write("\n ---------sleeping for ratelimit-------------- \n")
+        #for i in tqdm(range(300)):
+        #    time.sleep(1)
+        time.sleep(300)
+        ratelimitcounter=args.ratelimit
     postnum=1
     postlist=list()
     while True:
@@ -89,6 +91,7 @@ def get_repo_posts(repo_name):
                 break
             if(e.response.status_code==429):
                 print(f"ratelimited at model {repo_name}")
+                sys.exit(0)
 
             else:
                 print("unexpected error: ", e.response)
@@ -97,24 +100,32 @@ def get_repo_posts(repo_name):
 
 
 def main():
+    global ratelimitcounter
+    ratelimitcounter=args.ratelimit
     current_time=int(datetime.now().timestamp())
-    dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_{current_time}.csv"))
+    filename, filetype = os.path.splitext(args.file)
+    i,j=integers = [int(s) for s in re.findall(r'\d+', filename)]
+    dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_{i}-{j}_{current_time}.csv"))
     #headers=repo_discussions[0].keys()
-    model_path=os.path.abspath(os.path.join(os.getcwd(),"hf_files",args.file))
+    model_path=os.path.abspath(os.path.join(os.getcwd(),args.file))
     with open(model_path, 'r')as f:
-        data=dict(json.load(f))
-        model_names=list(data.keys())
+        model_names=f.readlines()
+        #data=dict(json.load(f))
+        #model_names=list(data.keys())
     all_discussions=list()
+    """   
     def name_gen():
         for i in range(0, len(model_names),490):
             yield model_names[i:i+490]
-
+    
     for chunk in tqdm(name_gen(),position=0, total=len(model_names)):
         for model in tqdm(chunk, position=1, leave=False):
             discussions=get_repo_posts(model)
             all_discussions.extend(discussions)
-
-
+    """
+    for model in tqdm(model_names):
+        discussions=get_repo_posts(model)
+        all_discussions.extend(discussions)
 
 
 
