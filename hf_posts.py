@@ -31,7 +31,7 @@ def get_repo_posts(repo_name):
     postlist=list()
     while True:
         try:
-            fulldiscussion=api.get_discussion_details(repo_name,postnum)
+            fulldiscussion=api.get_discussion_details(repo_id=repo_name,repo_type="model", discussion_num=postnum,token=os.getenv("HF_TOKEN"))
             ratelimitcounter-=1
             infodict=dict()
             infodict['repo_id']=fulldiscussion.repo_id
@@ -51,13 +51,16 @@ def get_repo_posts(repo_name):
                     #the amount of nested dicts is evil
                     commentdict.update(commentdict['_event'])
                     commentdict.update(commentdict['_event']['data'])
-                    authordict=commentdict['author'].copy()
-                    authordict.pop('type')
+                    if(commentdict['author'] == "deleted"):
+                        commentdict['name']=commentdict['author']
+                    else:
+                        authordict=commentdict['author'].copy()
+                        authordict.pop('type')
+                        commentdict.update(authordict)
+                        commentdict.pop('_id')
+                        commentdict.pop('avatarUrl')                        
+                    commentdict.pop('author')                   
                     commentdict.pop('latest')
-                    commentdict.update(authordict)
-                    commentdict.pop('author')
-                    #commentdict.pop('_id')
-                    commentdict.pop('avatarUrl')
                     commentdict.pop('_event')
                     commentdict.pop('id')
                     commentdict.pop('editorAvatarUrls')
@@ -65,6 +68,9 @@ def get_repo_posts(repo_name):
                     #will want this back for more detailed analysis
                     if('relatedEventId' in commentdict):
                         commentdict.pop('relatedEventId')
+                    if(commentdict['hidden']==True):
+                        commentdict.pop('hiddenBy')
+                        commentdict.pop('hiddenReason', None)
                     commentdict.update(infodict)
                     postlist.append(commentdict)
                     commentnum+=1
@@ -83,18 +89,19 @@ def get_repo_posts(repo_name):
                 #else:
                    #print(f"found end at comment #{postnum-1}")
                 break
-            if(e.response.status_code==410):
+            elif(e.response.status_code==410):
                 postlist.append({"repo_id":repo_name,"discussion_id":postnum,"status":"deleted"})
                 postnum+=1
-            if(e.response.status_code==401):
+            elif(e.response.status_code==401):
                 postlist.append({"repo_id":repo_name,"discussion_id":-1, "status": "private repository"})
                 break
-            if(e.response.status_code==429):
+            elif(e.response.status_code==429):
                 print(f"ratelimited at model {repo_name}")
                 sys.exit(0)
 
             else:
                 print("unexpected error: ", e.response)
+                print(e)
                 break
     return postlist
 
@@ -113,25 +120,16 @@ def main():
         #data=dict(json.load(f))
         #model_names=list(data.keys())
     all_discussions=list()
-    """   
-    def name_gen():
-        for i in range(0, len(model_names),490):
-            yield model_names[i:i+490]
-    
-    for chunk in tqdm(name_gen(),position=0, total=len(model_names)):
-        for model in tqdm(chunk, position=1, leave=False):
-            discussions=get_repo_posts(model)
-            all_discussions.extend(discussions)
-    """
+
     for model in tqdm(model_names):
-        discussions=get_repo_posts(model)
+        discussions=get_repo_posts(model.strip())
         all_discussions.extend(discussions)
 
 
 
     try:
          with open(dump_path,"a",newline='',encoding='utf-8') as f:
-            headers=all_discussions[0].keys()
+            headers=["type","created_at","content","edited","hidden","comment_id","createdAt","numEdits","identifiedLanguage","editors","reactions","isReport","_id","fullname","name","isPro","isHf","isHfAdmin","isMod","followerCount","isOwner","isOrgMember","repo_id","title","status","discussion_id","is_pull_request","og_author","url"]
             writer=csv.DictWriter(f,fieldnames=headers)
             writer.writeheader()
             writer.writerows(all_discussions)
