@@ -98,6 +98,9 @@ def get_repo_posts(repo_name):
             elif(e.response.status_code==429):
                 print(f"ratelimited at model {repo_name}")
                 sys.exit(0)
+            elif(e.response.status_code==403):
+                postlist.append({"repo_id":repo_name,"discussion_id":0,"status":"discussions disabled"})
+                break
 
             else:
                 print("unexpected error: ", e.response)
