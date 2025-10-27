@@ -22,9 +22,6 @@ def get_repo_posts(repo_name):
 
     global ratelimitcounter
     if(ratelimitcounter<=5):
-        #tqdm.write("\n ---------sleeping for ratelimit-------------- \n")
-        #for i in tqdm(range(300)):
-        #    time.sleep(1)
         time.sleep(300)
         ratelimitcounter=args.ratelimit
     postnum=1
@@ -124,7 +121,7 @@ def main():
         #model_names=list(data.keys())
     all_discussions=list()
 
-    for model in tqdm(model_names):
+    for model in tqdm(model_names, leave=False):
         discussions=get_repo_posts(model.strip())
         all_discussions.extend(discussions)
 
@@ -135,7 +132,13 @@ def main():
             headers=["type","created_at","content","edited","hidden","comment_id","createdAt","numEdits","identifiedLanguage","editors","reactions","isReport","_id","fullname","name","isPro","isHf","isHfAdmin","isMod","followerCount","isOwner","isOrgMember","repo_id","title","status","discussion_id","is_pull_request","og_author","url"]
             writer=csv.DictWriter(f,fieldnames=headers)
             writer.writeheader()
-            writer.writerows(all_discussions)
+            for row in all_discussions:
+                if(not row['oauthapp']):
+                    writer.writerow(row)
+                else:
+                    print(row)
+            #writer.writerows(all_discussions)
+            
     except Exception as e:
         print(f"Error: {e}")
     else:
