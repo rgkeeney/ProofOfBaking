@@ -71,6 +71,8 @@ def get_repo_posts(repo_name):
                     commentdict.update(infodict)
                     postlist.append(commentdict)
                     commentnum+=1
+                if(event['oauthApp']):
+                    print(event)
 
                 ratelimitcounter-=1
 
