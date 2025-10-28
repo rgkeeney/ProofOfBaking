@@ -100,6 +100,8 @@ def get_repo_posts(repo_name):
             elif(e.response.status_code==403):
                 postlist.append({"repo_id":repo_name,"discussion_id":0,"status":"discussions disabled"})
                 break
+            elif(e.response.status_code==504):
+                time.sleep(60)
 
             else:
                 print("unexpected error: ", e.response)
