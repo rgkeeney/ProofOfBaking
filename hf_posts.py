@@ -4,7 +4,7 @@ import os
 import csv
 import argparse
 import datetime
-import json
+import traceback
 import re
 import sys
 from tqdm import tqdm
@@ -71,8 +71,6 @@ def get_repo_posts(repo_name):
                     commentdict.update(infodict)
                     postlist.append(commentdict)
                     commentnum+=1
-                else:
-                    print(event)
 
                 ratelimitcounter-=1
 
@@ -84,9 +82,6 @@ def get_repo_posts(repo_name):
             if(e.response.status_code==404):
                 if(postnum==1):
                     postlist.append({"repo_id":repo_name,"discussion_id":0,"status":"empty"})
-                    #print("no comments")
-                #else:
-                   #print(f"found end at comment #{postnum-1}")
                 break
             elif(e.response.status_code==410):
                 postlist.append({"repo_id":repo_name,"discussion_id":postnum,"status":"deleted"})
@@ -121,6 +116,7 @@ def main():
     model_path=os.path.abspath(os.path.join(os.getcwd(),args.file))
     with open(model_path, 'r')as f:
         model_names=f.readlines()
+        #TODO: should probably handle a json input as well
         #data=dict(json.load(f))
         #model_names=list(data.keys())
     all_discussions=list()
@@ -131,22 +127,20 @@ def main():
 
 
 
-    try:
-         with open(dump_path,"a",newline='',encoding='utf-8') as f:
-            headers=["type","created_at","content","edited","hidden","comment_id","createdAt","numEdits","identifiedLanguage","editors","reactions","isReport","_id","fullname","name","isPro","isHf","isHfAdmin","isMod","followerCount","isOwner","isOrgMember","repo_id","title","status","discussion_id","is_pull_request","og_author","url"]
-            writer=csv.DictWriter(f,fieldnames=headers)
-            writer.writeheader()
-            for row in all_discussions:
-                if(not row['oauthapp']):
-                    writer.writerow(row)
-                else:
-                    print(row)
-            #writer.writerows(all_discussions)
-            
-    except Exception as e:
-        print(f"Error: {e}")
-    else:
-        print(f"Successful write to {dump_path}")
+    with open(dump_path,"a",newline='',encoding='utf-8') as f:
+        headers=["type","created_at","content","edited","hidden","comment_id","createdAt","numEdits","identifiedLanguage","editors","reactions","isReport","_id","fullname","name","isPro","isHf","isHfAdmin","isMod","followerCount","isOwner","isOrgMember","repo_id","title","status","discussion_id","is_pull_request","og_author","url"]
+        writer=csv.DictWriter(f,fieldnames=headers)
+        writer.writeheader()
+        for row in all_discussions:
+            try:
+                writer.writerow(row)
+            except Exception as e:
+                print("type: ", type(e))
+                print("\n traceback: ")
+                traceback.print_exc()
+            else:
+                print(f"Successful write to {dump_path}, no errors")
+
 
 
 if(__name__=="__main__"):
