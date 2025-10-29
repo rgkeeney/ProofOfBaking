@@ -69,6 +69,9 @@ def get_repo_posts(repo_name):
                         commentdict.pop('hiddenBy')
                         commentdict.pop('hiddenReason', None)
                     commentdict.update(infodict)
+                    if('oauthApp' in commentdict):
+                        print(commentdict['oauthApp'])
+                        commentdict.pop('oauthApp')
                     postlist.append(commentdict)
                     commentnum+=1
 
@@ -138,6 +141,7 @@ def main():
                 print("type: ", type(e))
                 print("\n traceback: ")
                 traceback.print_exc()
+                continue
             else:
                 print(f"Successful write to {dump_path}, no errors")
 
