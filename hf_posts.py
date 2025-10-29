@@ -142,8 +142,6 @@ def main():
                 print("\n traceback: ")
                 traceback.print_exc()
                 continue
-            else:
-                print(f"Successful write to {dump_path}, no errors")
 
 
 
