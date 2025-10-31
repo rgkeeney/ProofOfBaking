@@ -7,6 +7,7 @@ import datetime
 import traceback
 import re
 import sys
+import json
 from tqdm import tqdm
 from datetime import datetime
 from huggingface_hub.utils import HfHubHTTPError
@@ -18,7 +19,7 @@ load_dotenv()
 api=HfApi(token=os.getenv("HF_TOKEN"))
 global ratelimitcounter
 
-def get_repo_posts(repo_name):
+def get_repo_posts(repo_name, dump_path, weird_path):
 
     global ratelimitcounter
     if(ratelimitcounter<=5):
@@ -69,10 +70,29 @@ def get_repo_posts(repo_name):
                         commentdict.pop('hiddenBy')
                         commentdict.pop('hiddenReason', None)
                     commentdict.update(infodict)
-                    if('oauthApp' in commentdict):
-                        print(commentdict['oauthApp'])
-                        commentdict.pop('oauthApp')
-                    postlist.append(commentdict)
+                    #add header for weird
+                    if len(set(commentdict.keys()).difference(headers))>0:
+                        with open(weird_path,"a") as f:
+                            try:
+                                json.dumps(commentdict)
+                            except Exception as e:
+                                print("error: ", e)
+                            finally:
+                                break
+
+                    else:
+                        with open(dump_path, 'a', newline='',encoding='utf-8') as f:
+                            try:
+                                writer=csv.DictWriter(f, fieldnames=headers)
+                                writer.writerow(commentdict)
+                            except Exception as e:
+                                print("error: ", e)
+
+                    """if(set(commentdict.keys())!= set(["type","created_at","content","edited","hidden","comment_id","createdAt","numEdits","identifiedLanguage","editors","reactions","isReport","_id","fullname","name","isPro","isHf","isHfAdmin","isMod","followerCount","isOwner","isOrgMember","repo_id","title","status","discussion_id","is_pull_request","og_author","url"])):
+                        #write to janky jail file
+                        with open(os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_bad.csv")),"a",newline='',encoding='utf-8') as f:
+                            json.dumps(commentdict)"""
+                    #postlist.append(commentdict)
                     commentnum+=1
 
                 ratelimitcounter-=1
@@ -82,23 +102,23 @@ def get_repo_posts(repo_name):
         
         except HfHubHTTPError as e:
             ratelimitcounter-=1
-            if(e.response.status_code==404):
+            if e.response.status_code==404:
                 if(postnum==1):
                     postlist.append({"repo_id":repo_name,"discussion_id":0,"status":"empty"})
                 break
-            elif(e.response.status_code==410):
+            elif e.response.status_code==410:
                 postlist.append({"repo_id":repo_name,"discussion_id":postnum,"status":"deleted"})
                 postnum+=1
-            elif(e.response.status_code==401):
+            elif e.response.status_code==401:
                 postlist.append({"repo_id":repo_name,"discussion_id":-1, "status": "private repository"})
                 break
-            elif(e.response.status_code==429):
+            elif e.response.status_code==429:
                 print(f"ratelimited at model {repo_name}")
                 sys.exit(0)
-            elif(e.response.status_code==403):
+            elif e.response.status_code==403:
                 postlist.append({"repo_id":repo_name,"discussion_id":0,"status":"discussions disabled"})
                 break
-            elif(e.response.status_code==504):
+            elif e.response.status_code==504:
                 time.sleep(60)
 
             else:
@@ -114,7 +134,13 @@ def main():
     current_time=int(datetime.now().timestamp())
     filename, filetype = os.path.splitext(args.file)
     i,j=integers = [int(s) for s in re.findall(r'\d+', filename)]
+    global dump_path
     dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_{i}-{j}_{current_time}.csv"))
+    global weird_path
+    weird_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_{i}-{j}_weird.json"))
+    global headers
+    headers=["type","created_at","content","edited","hidden","comment_id","createdAt","numEdits","identifiedLanguage","editors","reactions","isReport","_id","fullname","name","isPro","isHf","isHfAdmin","isMod","followerCount","isOwner","isOrgMember","repo_id","title","status","discussion_id","is_pull_request","og_author","url"]
+
     #headers=repo_discussions[0].keys()
     model_path=os.path.abspath(os.path.join(os.getcwd(),args.file))
     with open(model_path, 'r')as f:
@@ -123,13 +149,17 @@ def main():
         #data=dict(json.load(f))
         #model_names=list(data.keys())
     all_discussions=list()
-
+    with open(dump_path,"a",newline='',encoding='utf-8') as f:
+        writer=csv.DictWriter(f,fieldnames=headers)
+        writer.writeheader()
+    
     for model in tqdm(model_names, leave=False):
-        discussions=get_repo_posts(model.strip())
-        all_discussions.extend(discussions)
+        discussions=get_repo_posts(model.strip(), dump_path, weird_path)
+        #all_discussions.extend(discussions)
+    print("finished run")
 
 
-
+"""
     with open(dump_path,"a",newline='',encoding='utf-8') as f:
         headers=["type","created_at","content","edited","hidden","comment_id","createdAt","numEdits","identifiedLanguage","editors","reactions","isReport","_id","fullname","name","isPro","isHf","isHfAdmin","isMod","followerCount","isOwner","isOrgMember","repo_id","title","status","discussion_id","is_pull_request","og_author","url"]
         writer=csv.DictWriter(f,fieldnames=headers)
@@ -143,9 +173,9 @@ def main():
                 traceback.print_exc()
                 continue
 
+"""
 
-
-if(__name__=="__main__"):
+if __name__=="__main__":
     parser=argparse.ArgumentParser()
     parser.add_argument("-f", "--file", type=str,help="name of model file in hf_files")
     parser.add_argument("-r", "--ratelimit", type=int, default=500, help="huggingface api rate limit per 5 minutes, defaults to 500")
