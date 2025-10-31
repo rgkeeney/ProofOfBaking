@@ -63,20 +63,20 @@ def get_repo_posts(repo_name, dump_path, weird_path):
                     commentdict.pop('id')
                     commentdict.pop('editorAvatarUrls')
                     commentdict.pop('data')
-                    #will want this back for more detailed analysis
+                    #will want this back for more detailed analysis?
                     if('relatedEventId' in commentdict):
                         commentdict.pop('relatedEventId')
                     if(commentdict['hidden']==True):
                         commentdict.pop('hiddenBy')
                         commentdict.pop('hiddenReason', None)
                     commentdict.update(infodict)
-                    #add header for weird
+                    #dump strange returns with mystery oauth
                     if len(set(commentdict.keys()).difference(headers))>0:
                         with open(weird_path,"a") as f:
                             try:
-                                json.dumps(commentdict)
+                                json.dumps(commentdict.__dict__)
                             except Exception as e:
-                                print("error: ", e)
+                                print(f"error {e} at model {repo_name}")
                             finally:
                                 break
 
@@ -113,8 +113,9 @@ def get_repo_posts(repo_name, dump_path, weird_path):
                 postlist.append({"repo_id":repo_name,"discussion_id":-1, "status": "private repository"})
                 break
             elif e.response.status_code==429:
-                print(f"ratelimited at model {repo_name}")
-                sys.exit(0)
+                print(f"ratelimited at model {repo_name}, sleeping full time window and retrying")
+                time.sleep(300)
+                #sys.exit(0)
             elif e.response.status_code==403:
                 postlist.append({"repo_id":repo_name,"discussion_id":0,"status":"discussions disabled"})
                 break
