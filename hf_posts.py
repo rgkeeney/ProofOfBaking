@@ -74,7 +74,8 @@ def get_repo_posts(repo_name, dump_path, weird_path):
                     if len(set(commentdict.keys()).difference(headers))>0:
                         with open(weird_path,"a") as f:
                             try:
-                                json.dumps(commentdict.__dict__)
+                                commentdict['created_at']=str(commentdict['created_at'])
+                                json.dumps(commentdict)
                             except Exception as e:
                                 print(f"error {e} at model {repo_name}")
                             finally:
@@ -104,20 +105,51 @@ def get_repo_posts(repo_name, dump_path, weird_path):
             ratelimitcounter-=1
             if e.response.status_code==404:
                 if(postnum==1):
-                    postlist.append({"repo_id":repo_name,"discussion_id":0,"status":"empty"})
+                    #postlist.append({"repo_id":repo_name,"discussion_id":0,"status":"empty"})
+                    try:
+                        with open(dump_path,"a") as f:
+                            writer=csv.DictWriter(f, fieldnames=headers)
+                            writer.writerow({"repo_id":repo_name,"discussion_id":0,"status":"empty"})
+                            print("reached empty")
+                    except Exception as e:
+                        print("error: ", e)
+
                 break
             elif e.response.status_code==410:
-                postlist.append({"repo_id":repo_name,"discussion_id":postnum,"status":"deleted"})
+                #postlist.append({"repo_id":repo_name,"discussion_id":postnum,"status":"deleted"})
+                try:
+                    with open(dump_path,"a") as f:
+                        writer=csv.DictWriter(f, fieldnames=headers)
+                        writer.writerow({"repo_id":repo_name,"discussion_id":postnum,"status":"deleted"})
+                except Exception as e:
+                    print("error: ", e)
+
                 postnum+=1
             elif e.response.status_code==401:
-                postlist.append({"repo_id":repo_name,"discussion_id":-1, "status": "private repository"})
+                #postlist.append({"repo_id":repo_name,"discussion_id":-1, "status": "private repository"})
+                try:
+                    with open(dump_path,"a") as f:
+                        writer=csv.DictWriter(f, fieldnames=headers)
+                        edict={"repo_id":repo_name,"discussion_id":-1, "status": "private repository"}
+                        writer.writerow(edict)
+                        print("reached private")
+                except Exception as e:
+                    print("error: ", e)
+
                 break
             elif e.response.status_code==429:
                 print(f"ratelimited at model {repo_name}, sleeping full time window and retrying")
                 time.sleep(300)
                 #sys.exit(0)
             elif e.response.status_code==403:
-                postlist.append({"repo_id":repo_name,"discussion_id":0,"status":"discussions disabled"})
+                #postlist.append({"repo_id":repo_name,"discussion_id":0,"status":"discussions disabled"})
+                try:
+                    with open(dump_path, "a") as f:
+                        writer=csv.DictWriter(f, fieldnames=headers)
+                        writer.writerow({"repo_id":repo_name,"discussion_id":0,"status":"discussions disabled"})
+                except Exception as e:
+                                print("error: ", e)
+
                 break
             elif e.response.status_code==504:
                 time.sleep(60)
