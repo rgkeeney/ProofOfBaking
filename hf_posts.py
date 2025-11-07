@@ -74,6 +74,7 @@ def get_repo_posts(repo_name, dump_path, weird_path):
                     if len(set(commentdict.keys()).difference(headers))>0:
                         with open(weird_path,"a") as f:
                             try:
+                                print("weirdness at model ", repo_name)
                                 commentdict['created_at']=str(commentdict['created_at'])
                                 json.dumps(commentdict)
                             except Exception as e:
@@ -88,11 +89,6 @@ def get_repo_posts(repo_name, dump_path, weird_path):
                                 writer.writerow(commentdict)
                             except Exception as e:
                                 print("error: ", e)
-
-                    """if(set(commentdict.keys())!= set(["type","created_at","content","edited","hidden","comment_id","createdAt","numEdits","identifiedLanguage","editors","reactions","isReport","_id","fullname","name","isPro","isHf","isHfAdmin","isMod","followerCount","isOwner","isOrgMember","repo_id","title","status","discussion_id","is_pull_request","og_author","url"])):
-                        #write to janky jail file
-                        with open(os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_bad.csv")),"a",newline='',encoding='utf-8') as f:
-                            json.dumps(commentdict)"""
                     #postlist.append(commentdict)
                     commentnum+=1
 
@@ -103,14 +99,13 @@ def get_repo_posts(repo_name, dump_path, weird_path):
         
         except HfHubHTTPError as e:
             ratelimitcounter-=1
-            if e.response.status_code==404:
+            if e.response.status_code==404 or e.response.status_code==502:
                 if(postnum==1):
                     #postlist.append({"repo_id":repo_name,"discussion_id":0,"status":"empty"})
                     try:
                         with open(dump_path,"a") as f:
                             writer=csv.DictWriter(f, fieldnames=headers)
                             writer.writerow({"repo_id":repo_name,"discussion_id":0,"status":"empty"})
-                            print("reached empty")
                     except Exception as e:
                         print("error: ", e)
 
@@ -132,7 +127,6 @@ def get_repo_posts(repo_name, dump_path, weird_path):
                         writer=csv.DictWriter(f, fieldnames=headers)
                         edict={"repo_id":repo_name,"discussion_id":-1, "status": "private repository"}
                         writer.writerow(edict)
-                        print("reached private")
                 except Exception as e:
                     print("error: ", e)
 
@@ -189,24 +183,9 @@ def main():
     for model in tqdm(model_names, leave=False):
         discussions=get_repo_posts(model.strip(), dump_path, weird_path)
         #all_discussions.extend(discussions)
-    print("finished run")
+    print("finished run and saved to ", dump_path)
 
 
-"""
-    with open(dump_path,"a",newline='',encoding='utf-8') as f:
-        headers=["type","created_at","content","edited","hidden","comment_id","createdAt","numEdits","identifiedLanguage","editors","reactions","isReport","_id","fullname","name","isPro","isHf","isHfAdmin","isMod","followerCount","isOwner","isOrgMember","repo_id","title","status","discussion_id","is_pull_request","og_author","url"]
-        writer=csv.DictWriter(f,fieldnames=headers)
-        writer.writeheader()
-        for row in all_discussions:
-            try:
-                writer.writerow(row)
-            except Exception as e:
-                print("type: ", type(e))
-                print("\n traceback: ")
-                traceback.print_exc()
-                continue
-
-"""
 
 if __name__=="__main__":
     parser=argparse.ArgumentParser()
