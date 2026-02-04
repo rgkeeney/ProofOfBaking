@@ -71,12 +71,16 @@ def get_repo_posts(repo_name, dump_path, weird_path):
                         commentdict.pop('hiddenReason', None)
                     commentdict.update(infodict)
                     #dump strange returns with mystery oauth
+                    #TODO: rewrite this to not be godawful ugly
+                    commentdict.pop("isUserFollowing", " ")
+                    commentdict.pop("oauthApp", " ")
                     if len(set(commentdict.keys()).difference(headers))>0:
                         with open(weird_path,"a") as f:
                             try:
                                 print("weirdness at model ", repo_name)
+                                print(set(commentdict.keys())-set(headers))                                
                                 commentdict['created_at']=str(commentdict['created_at'])
-                                json.dumps(commentdict)
+                                json.dump(commentdict, f)
                             except Exception as e:
                                 print(f"error {e} at model {repo_name}")
                             finally:
