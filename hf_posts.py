@@ -163,12 +163,19 @@ def main():
     global ratelimitcounter
     ratelimitcounter=args.ratelimit
     current_time=int(datetime.now().timestamp())
+
     filename, filetype = os.path.splitext(args.file)
-    i,j=integers = [int(s) for s in re.findall(r'\d+', filename)]
     global dump_path
-    dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_{i}-{j}_{current_time}.csv"))
     global weird_path
-    weird_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_{i}-{j}_weird.json"))
+    if "rerun" in filename:
+        i = [int(s) for s in re.findall(r'\d+', filename)]
+        dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_rerun_{i}.csv"))
+        weird_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_rerun_{i}_weird.json"))
+    else:
+        i,j=integers = [int(s) for s in re.findall(r'\d+', filename)]
+
+        dump_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_{i}-{j}_{current_time}.csv"))
+        weird_path = os.path.abspath(os.path.join(os.getcwd(),"hf_files","community",f"community_posts_{i}-{j}_weird.json"))
     global headers
     headers=["type","created_at","content","edited","hidden","comment_id","createdAt","numEdits","identifiedLanguage","editors","reactions","isReport","_id","fullname","name","isPro","isHf","isHfAdmin","isMod","followerCount","isOwner","isOrgMember","repo_id","title","status","discussion_id","is_pull_request","og_author","url"]
 

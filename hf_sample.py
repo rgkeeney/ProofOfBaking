@@ -7,11 +7,7 @@ import csv
 import time
 from datetime import datetime
 from dotenv import load_dotenv
-
-parser=argparse.ArgumentParser()
-parser.add_argument("-t", "--timestamp", help="Unix timestamp that the scraper will stop at. First model created at 1646263744")
-
-api=HfApi()
+import requests
 #this no longer works, keeping to revamp later
 '''
 def get_models(num_models=5):
@@ -79,8 +75,6 @@ def get_user_info(user):
     pp.pprint(api.get_user_overview(user))
 
 
-import requests
-
 def get_user_gh(user):
     from bs4 import BeautifulSoup
     source=requests.get(f"https://huggingface.co/{user}")
@@ -97,4 +91,7 @@ def get_user_gh(user):
 
 if(__name__=="__main__"):
     args=parser.parse_args()
+    api=HfApi()
+    parser=argparse.ArgumentParser()
+    parser.add_argument("-t", "--timestamp", default=1646263744, help="Unix timestamp that the scraper will stop at. Defaults to first timestamp created at 1646263744")
     get_models_since(int(args.timestamp))
